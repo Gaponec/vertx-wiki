@@ -10,11 +10,18 @@ repositories {
   mavenCentral()
 }
 
-val vertxVersion = "3.8.3"
+val vertxVersion = "3.8.5"
 val junitVersion = "5.3.2"
+val txtMarkVersion = "0.13"
+val hsqldbVersion = "2.3.4"
 
 dependencies {
   implementation("io.vertx:vertx-core:$vertxVersion")
+  implementation("io.vertx:vertx-web:$vertxVersion")
+  implementation("io.vertx:vertx-web-templ-freemarker:$vertxVersion")
+  implementation("io.vertx:vertx-jdbc-client:$vertxVersion")
+  implementation("com.github.rjeschke:txtmark:$txtMarkVersion")
+  implementation("org.hsqldb:hsqldb:$hsqldbVersion")
 
   testImplementation("io.vertx:vertx-junit5:$vertxVersion")
   testImplementation("io.vertx:vertx-web-client:$vertxVersion")

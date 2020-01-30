@@ -1,5 +1,8 @@
 package com.gaponec;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.codec.BodyCodec;
@@ -9,9 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
 class MainVerticleTest {
@@ -30,7 +30,7 @@ class MainVerticleTest {
       .send(testContext.succeeding(response -> testContext.verify(() -> {
         assertEquals(200, response.statusCode());
         assertTrue(response.body().length() > 0);
-        assertTrue(response.body().contains("Hello Vert.x!"));
+        assertTrue(response.body().contains("Hello Vertx"));
         testContext.completeNow();
       })));
   }
