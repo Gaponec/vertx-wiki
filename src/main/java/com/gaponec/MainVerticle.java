@@ -1,9 +1,11 @@
 package com.gaponec;
 
+import com.github.rjeschke.txtmark.Processor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.SQLConnection;
@@ -14,6 +16,9 @@ import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +28,8 @@ public class MainVerticle extends AbstractVerticle {
 
   private JDBCClient jdbcClient;
   private FreeMarkerTemplateEngine templateEngine;
+
+  private static final String EMPTY_PAGE = "This page is empty";
 
   private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages " +
     "(Id integer identity primary key, Name varchar(255) unique, Content clob)";
@@ -74,6 +81,61 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void pageDeletionHandler(RoutingContext routingContext) {
+
+  }
+
+  private void pageCreateHandler(RoutingContext routingContext) {
+
+  }
+
+  private void pageUpdateHandler(RoutingContext routingContext) {
+
+  }
+
+  private void pageRenderingHandler(RoutingContext routingContext) {
+    String page = routingContext.request().getParam("page");
+
+    jdbcClient.getConnection(arResult -> {
+      if (arResult.succeeded()) {
+        SQLConnection connection = arResult.result();
+
+        connection.queryWithParams(SQL_GET_PAGE, new JsonArray().add(page), arResultSet -> {
+          if (arResultSet.succeeded()) {
+            JsonArray row = arResultSet.result().getResults()
+              .stream()
+              .findFirst()
+              .orElseGet(() -> new JsonArray().add(-1).add(EMPTY_PAGE));
+
+            Integer id = row.getInteger(0);
+            String rawContent = row.getString(1);
+
+            routingContext.put("title", page);
+            routingContext.put("id", id);
+            routingContext.put("newPage", arResultSet.result().getResults().size() == 0 ? "yes" : "no");
+            routingContext.put("rawContent", rawContent);
+            routingContext.put("content", Processor.process(rawContent));
+            routingContext.put("timeStamp", LocalDateTime.now().toString());
+
+            templateEngine.render(routingContext.data(), "templates/page.ftl", ar -> {
+              if (ar.succeeded()) {
+                routingContext.response().putHeader("Content-Type", "text/html");
+                routingContext.response().end(ar.result());
+              } else {
+                routingContext.fail(ar.cause());
+              }
+            });
+          } else {
+            connection.close();
+            routingContext.fail(arResultSet.cause());
+          }
+        });
+      } else {
+        routingContext.fail(arResult.cause());
+      }
+    });
+  }
+
+  private void indexHandler(RoutingContext routingContext) {
     jdbcClient.getConnection(connectionAsyncResult -> {
       if (connectionAsyncResult.succeeded()) {
         SQLConnection connection = connectionAsyncResult.result();
@@ -107,22 +169,6 @@ public class MainVerticle extends AbstractVerticle {
         routingContext.fail(connectionAsyncResult.cause());
       }
     });
-  }
-
-  private void pageCreateHandler(RoutingContext routingContext) {
-
-  }
-
-  private void pageUpdateHandler(RoutingContext routingContext) {
-
-  }
-
-  private void pageRenderingHandler(RoutingContext routingContext) {
-
-  }
-
-  private void indexHandler(RoutingContext routingContext) {
-
   }
 
   private Future<Void> prepareDatabase() {

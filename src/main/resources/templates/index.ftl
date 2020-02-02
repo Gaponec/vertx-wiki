@@ -12,16 +12,16 @@
     <h1 class="display-4">${title}</h1>
   </div>
   <div class="col-md-12 mt-1">
-      <#list pages>
-        <h2>Pages:</h2>
-        <ul>
-            <#items as page>
-              <li><a href="/wiki/${page}">${page}</a></li>
-            </#items>
-        </ul>
-      <#else>
-        <p>The wiki is currently empty!</p>
-      </#list>
+    <#list pages>
+      <h2>Pages:</h2>
+      <ul>
+        <#items as page>
+          <li><a href="/wiki/${page}">${page}</a></li>
+        </#items>
+      </ul>
+    <#else>
+      <p>The wiki is currently empty!</p>
+    </#list>
   </div>
 </div>
 <#include "footer.ftl">

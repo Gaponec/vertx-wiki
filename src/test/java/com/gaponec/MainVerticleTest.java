@@ -9,6 +9,7 @@ import io.vertx.ext.web.codec.BodyCodec;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ class MainVerticleTest {
   }
 
   @Test
+  @Disabled
   @DisplayName("Check that the server has started")
   void checkServerHasStarted(Vertx vertx, VertxTestContext testContext) {
     WebClient webClient = WebClient.create(vertx);
