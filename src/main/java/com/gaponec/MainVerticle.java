@@ -1,6 +1,9 @@
 package com.gaponec;
 
 import com.github.rjeschke.txtmark.Processor;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpStatusClass;
+import io.netty.util.internal.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -85,7 +88,14 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void pageCreateHandler(RoutingContext routingContext) {
-
+    String pageName = routingContext.request().getParam("name");
+    String location = "/wiki/" + pageName;
+    if (StringUtil.isNullOrEmpty(pageName)) {
+      location = "/";
+    }
+    routingContext.response().setStatusCode(HttpResponseStatus.SEE_OTHER.code());
+    routingContext.response().putHeader("Location", location);
+    routingContext.response().end();
   }
 
   private void pageUpdateHandler(RoutingContext routingContext) {
