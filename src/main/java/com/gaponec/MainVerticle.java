@@ -2,7 +2,6 @@ package com.gaponec;
 
 import com.github.rjeschke.txtmark.Processor;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpStatusClass;
 import io.netty.util.internal.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -19,9 +18,7 @@ import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -84,7 +81,25 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void pageDeletionHandler(RoutingContext routingContext) {
+    String id = routingContext.request().getParam("id");
 
+    jdbcClient.getConnection(arSQLConnection -> {
+      if (arSQLConnection.succeeded()) {
+        SQLConnection connection = arSQLConnection.result();
+
+        connection.updateWithParams(SQL_DELETE_PAGE, new JsonArray().add(id), arUpdateResult -> {
+          if (arUpdateResult.succeeded()) {
+            routingContext.response().setStatusCode(HttpResponseStatus.SEE_OTHER.code());
+            routingContext.response().putHeader("Location", "/");
+            routingContext.response().end();
+          } else {
+            routingContext.fail(arUpdateResult.cause());
+          }
+        });
+      } else {
+        routingContext.fail(arSQLConnection.cause());
+      }
+    });
   }
 
   private void pageCreateHandler(RoutingContext routingContext) {
@@ -99,7 +114,35 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void pageUpdateHandler(RoutingContext routingContext) {
+    String id = routingContext.request().getParam("id");
+    String title = routingContext.request().getParam("title");
+    String markdown = routingContext.request().getParam("markdown");
+    boolean isNew = "yes".equals(routingContext.request().getParam("newPage"));
 
+    jdbcClient.getConnection(arSQLConnection -> {
+      if (arSQLConnection.succeeded()) {
+        SQLConnection connection = arSQLConnection.result();
+        String sql = isNew ? SQL_CREATE_PAGE : SQL_SAVE_PAGE;
+        JsonArray jsonArray = new JsonArray();
+        if (isNew) {
+          jsonArray.add(title).add(markdown);
+        } else {
+          jsonArray.add(markdown).add(id);
+        }
+
+        connection.updateWithParams(sql, jsonArray, arUpdateResult -> {
+          if (arUpdateResult.succeeded()) {
+            routingContext.response().setStatusCode(HttpResponseStatus.SEE_OTHER.code());
+            routingContext.response().putHeader("Location", "/wiki/" + title);
+            routingContext.response().end();
+          } else {
+            routingContext.fail(arUpdateResult.cause());
+          }
+        });
+      } else {
+        routingContext.fail(arSQLConnection.cause());
+      }
+    });
   }
 
   private void pageRenderingHandler(RoutingContext routingContext) {
@@ -124,7 +167,7 @@ public class MainVerticle extends AbstractVerticle {
             routingContext.put("newPage", arResultSet.result().getResults().size() == 0 ? "yes" : "no");
             routingContext.put("rawContent", rawContent);
             routingContext.put("content", Processor.process(rawContent));
-            routingContext.put("timeStamp", LocalDateTime.now().toString());
+            routingContext.put("timestamp", LocalDateTime.now().toString());
 
             templateEngine.render(routingContext.data(), "templates/page.ftl", ar -> {
               if (ar.succeeded()) {
