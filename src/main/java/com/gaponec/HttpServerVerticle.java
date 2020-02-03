@@ -1,5 +1,6 @@
 package com.gaponec;
 
+import com.github.rjeschke.txtmark.Processor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -12,6 +13,8 @@ import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
+
 public class HttpServerVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpServerVerticle.class);
@@ -19,6 +22,7 @@ public class HttpServerVerticle extends AbstractVerticle {
   private static final String CONFIG_HTTP_SERVER_PORT = "http.server.port";
   public static final String CONFIG_WIKIDB_QUEUE = "wikidb.queue";
   private static final Integer DEFAULT_HTTP_SERVER_PORT = 8080;
+  private static final String EMPTY_PAGE_MARKDOWN = "Page is empty";
 
   private String wikiDbQueue = "wikidb.queue";
 
@@ -68,7 +72,35 @@ public class HttpServerVerticle extends AbstractVerticle {
   }
 
   private void pageRenderingHandler(RoutingContext routingContext) {
+    String requestPage = routingContext.request().getParam("page");
+    JsonObject request = new JsonObject().put("page", requestPage);
 
+    DeliveryOptions options = new DeliveryOptions().addHeader("action", "get-page");
+    vertx.eventBus().request(wikiDbQueue, request, options, reply -> {
+      if (reply.succeeded()) {
+        JsonObject body = (JsonObject) reply.result().body();
+
+        boolean found = body.getBoolean("found");
+
+        String rawContent = body.getString("rawContent", EMPTY_PAGE_MARKDOWN);
+        routingContext.put("title", requestPage);
+        routingContext.put("id", body.getInteger("id", -1));
+        routingContext.put("newPage", found ? "no" : "yes");
+        routingContext.put("rawContent", rawContent);
+        routingContext.put("content", Processor.process(rawContent));
+        routingContext.put("timestamp", LocalDateTime.now().toString());
+        templateEngine.render(routingContext.data(), "templates/page.ftl", bufferAsyncResult -> {
+          if (bufferAsyncResult.succeeded()) {
+            routingContext.response().putHeader("Content-Type", "text/html");
+            routingContext.response().end(bufferAsyncResult.result());
+          } else {
+            routingContext.fail(bufferAsyncResult.cause());
+          }
+        });
+      } else {
+        routingContext.fail(reply.cause());
+      }
+    });
   }
 
   private void indexHandler(RoutingContext routingContext) {
