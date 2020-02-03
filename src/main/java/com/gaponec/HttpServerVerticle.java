@@ -1,5 +1,7 @@
 package com.gaponec;
 
+import static io.netty.util.internal.StringUtil.isNullOrEmpty;
+
 import com.github.rjeschke.txtmark.Processor;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -60,15 +62,55 @@ public class HttpServerVerticle extends AbstractVerticle {
   }
 
   private void pageDeletionHandler(RoutingContext routingContext) {
-
+    String id = routingContext.request().getParam("id");
+    JsonObject request = new JsonObject()
+      .put("id", id);
+    DeliveryOptions options = new DeliveryOptions().addHeader("action", "delete-page");
+    vertx.eventBus().request(wikiDbQueue, request, options, reply -> {
+      if (reply.succeeded()) {
+        routingContext.response().setStatusCode(303);
+        routingContext.response().putHeader("Location", "/");
+        routingContext.response().end();
+      } else {
+        routingContext.fail(reply.cause());
+      }
+    });
   }
 
   private void pageCreateHandler(RoutingContext routingContext) {
-
+    String pageName = routingContext.request().getParam("name");
+    String location = "/wiki/" + pageName;
+    if (isNullOrEmpty(pageName)) {
+      location = "/";
+    }
+    routingContext.response().setStatusCode(303);
+    routingContext.response().putHeader("Location", location);
+    routingContext.response().end();
   }
 
   private void pageUpdateHandler(RoutingContext routingContext) {
+    String title = routingContext.request().getParam("title");
+    JsonObject request = new JsonObject()
+      .put("id", routingContext.request().getParam("id"))
+      .put("title", title)
+      .put("markdown", routingContext.request().getParam("markdown"));
 
+    DeliveryOptions options = new DeliveryOptions();
+    if ("yes".equals(routingContext.request().getParam("newPage"))) {
+      options.addHeader("action", "create-page");
+    } else {
+      options.addHeader("action", "save-page");
+    }
+
+    vertx.eventBus().request(wikiDbQueue, request, options, reply -> {
+      if (reply.succeeded()) {
+        routingContext.response().setStatusCode(303);
+        routingContext.response().putHeader("Location", "/wiki/" + title);
+        routingContext.response().end();
+      } else {
+        routingContext.fail(reply.cause());
+      }
+    });
   }
 
   private void pageRenderingHandler(RoutingContext routingContext) {
